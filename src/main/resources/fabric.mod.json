@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"id": "discordrichstructure",
+	"id": "bastiontypeanylyzer",
 	"version": "${version}",
-	"name": "DiscordRichStructure",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "Bastion Type Anylyzer",
+	"description": "Detects and displays bastion in Minecraft lol",
 	"authors": [
 		"Me!"
 	],

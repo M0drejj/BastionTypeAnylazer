@@ -1,4 +1,4 @@
-package name.modid;
+package Modrej.bastion;
 
 import net.fabricmc.api.ModInitializer;
 
