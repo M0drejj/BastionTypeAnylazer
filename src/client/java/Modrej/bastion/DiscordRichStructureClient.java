@@ -2,6 +2,7 @@ package Modrej.bastion;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.structure.PoolStructurePiece;
@@ -12,11 +13,22 @@ import net.minecraft.world.gen.structure.StructureKeys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 public class DiscordRichStructureClient implements ClientModInitializer {
     private static final Logger log = LoggerFactory.getLogger(DiscordRichStructureClient.class);
     // init variables
-    private int tickCounter = 0;
     private boolean wasInside = false;
+
+    private enum BastionSection {
+        RAMPART,
+        TREASURE,
+        HOUSING,
+        STABLES
+    }
+    private BastionSection lastSection = null;
+    private String lastBastionType = null;
 
     // init methods
     private StructureStart FindBastion(ServerWorld world, BlockPos pos) {
@@ -34,35 +46,54 @@ public class DiscordRichStructureClient implements ClientModInitializer {
         return structureStart;
     }
 
-    private String getBastionType(StructureStart structureStart) {
-        if (structureStart.getChildren().isEmpty()) return null;
-        var firstPiece = structureStart.getChildren().get(0);
+    private Set<BastionSection> getBastionSections(StructureStart structureStart) {
+        Set<BastionSection> sections = EnumSet.noneOf(BastionSection.class);
 
-        if (firstPiece instanceof PoolStructurePiece poolPiece) {
+        for (var piece : structureStart.getChildren()) {
+
+            if (!(piece instanceof PoolStructurePiece poolPiece)) continue;
+
             String id = poolPiece.getPoolElement().toString();
 
-            if (id.contains("bastion/")) {
-                return id.split("bastion/")[1].split("/")[0];
-            }
+            if (id.contains("rampart")) sections.add(BastionSection.RAMPART);
+            if (id.contains("treasure")) sections.add(BastionSection.TREASURE);
+            if (id.contains("units")) sections.add(BastionSection.HOUSING);
+            if (id.contains("stable")) sections.add(BastionSection.STABLES);
         }
+
+        return sections;
+    }
+
+    private BastionSection getCurrentSection(StructureStart structureStart, BlockPos pos) {
+
+        for (var piece : structureStart.getChildren()) {
+
+            if (!(piece instanceof PoolStructurePiece poolPiece)) continue;
+
+            if (!piece.getBoundingBox().contains(pos)) continue;
+
+            String id = poolPiece.getPoolElement().toString();
+
+            if (id.contains("rampart")) return BastionSection.RAMPART;
+            if (id.contains("treasure")) return BastionSection.TREASURE;
+            if (id.contains("units")) return BastionSection.HOUSING;
+            if (id.contains("stable")) return BastionSection.STABLES;
+        }
+
         return null;
     }
-
-    private String formatName(String rawType) {
-        String[] parts = rawType.split("_");
-        StringBuilder formatted = new StringBuilder();
-
-        for (String part : parts) {
-            formatted.append(part.substring(0, 1).toUpperCase());
-            formatted.append(part.substring((1)));
-            formatted.append(" ");
-        }
-        return formatted.toString().trim();
-    }
-
+private String formatWSectionName(BastionSection section)
+{
+    String lower = section.name().toLowerCase();
+    return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+}
     @Override
     public void onInitializeClient() {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+
+            if (FabricLoader.getInstance().isModLoaded("craftpresence")) {
+                // sem přijde registrace variable
+            }
 
                     if (client.world == null || client.player == null) return;
                     if (client.getServer() == null) return;
@@ -77,32 +108,49 @@ public class DiscordRichStructureClient implements ClientModInitializer {
                     if (!serverWorld.isChunkLoaded(pos.getX() >> 4, pos.getZ() >> 4)) return;
 
                     StructureStart structureStart = FindBastion(serverWorld, pos);
-                    boolean isInside = structureStart != null;
-                    if (isInside && !wasInside) {
-                        String rawType = getBastionType(structureStart);
 
-                        if (rawType != null) {
-                            String formatted = formatName(rawType);
-                            log.info("Entered " + formatted + " Bastion");
+                    if (structureStart == null) {
+                        if(wasInside){
+                            log.info("Player Left The Bastion!");
                         }
+                        lastSection = null;
+                        lastBastionType = null;
+                        wasInside = false;
+                        return;
                     }
+                        Set<BastionSection> sections = getBastionSections(structureStart);
+                        BastionSection currentSection = getCurrentSection(structureStart, pos);
 
-                    if (!isInside && wasInside) {
-                        log.info("Player Left The Bastion!");
-                    }
+                        String bastionType = null;
 
-                    wasInside = isInside;
+                        if (sections.contains(BastionSection.TREASURE)) {
+                            bastionType = "Treasure Bastion";
+                        } else if (sections.contains(BastionSection.HOUSING)) {
+                            bastionType = "Housing Bastion";
+                        } else if (sections.contains(BastionSection.STABLES)) {
+                            bastionType = "Stables Bastion";
+                        }
+
+                        if (bastionType == null)
+                            return;
+
+                        if(!bastionType.equals(lastBastionType)) {
+                            log.info("You entered: " + bastionType);
+                            lastBastionType = bastionType;
+                        }
+                        if(currentSection != lastSection) {
+                            if(currentSection != null)
+                                log.info("You are in a " + formatWSectionName(currentSection));
+
+                            lastSection = currentSection;
+                        }
+            wasInside = true;
                 }
 
 
         );
     }
 }
-
-
-
-
-
 
 
 // This entrypoint is suitable for setting up client-specific logic, such as rendering.

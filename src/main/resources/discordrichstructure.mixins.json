@@ -1,9 +1,8 @@
 {
 	"required": true,
-	"package": "name.modid.mixin",
+	"package": "name.modid.mixin.client",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"ExampleMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

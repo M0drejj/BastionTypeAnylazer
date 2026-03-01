@@ -15,11 +15,8 @@
 	"icon": "assets/discordrichstructure/icon.png",
 	"environment": "*",
 	"entrypoints": {
-		"main": [
-			"name.modid.DiscordRichStructure"
-		],
 		"client": [
-			"name.modid.DiscordRichStructureClient"
+			"Modrej.bastion.DiscordRichStructureClient"
 		]
 	},
 	"mixins": [
